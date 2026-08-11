@@ -1,0 +1,13 @@
+{
+  "private": true,
+  "name": "qwenwork-linux-port",
+  "version": "1.0.0",
+  "description": "Unofficial conversion tool: build a Linux x64 QwenWorkCN (千问办公) app from a user-owned official macOS DMG",
+  "main": "install.sh",
+  "scripts": {
+    "check": "bash -n install.sh scripts/*.sh scripts/lib/*.sh",
+    "build-app": "bash install.sh",
+    "package": "bash scripts/package.sh"
+  },
+  "license": "MIT"
+}

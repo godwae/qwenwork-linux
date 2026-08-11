@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=QwenWorkCN
+Comment=Run QwenWorkCN (千问办公) on Linux
+Exec=__EXEC__
+Icon=qwenwork-cn
+Type=Application
+Categories=Office;Productivity;Development;
+StartupNotify=true
+StartupWMClass=QwenWorkCN
+MimeType=x-scheme-handler/qwenwork-cn;

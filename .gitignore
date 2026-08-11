@@ -1,0 +1,21 @@
+# Upstream software input (user-provided official DMG)
+downloads/
+
+# Build output / generated app payloads — never commit
+qwenwork-app/
+qwenwork-app-next/
+dist/
+dist-next/
+build/
+reference/
+
+# Scratch from asar tooling
+.asar-tool/
+.asar-extract/
+.test-repack.asar
+.test-repack.asar.unpacked
+.tmp-asar-tool.js
+.tmp-asar-repack.js
+
+node_modules/
+*.log
