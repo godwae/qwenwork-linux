@@ -176,6 +176,22 @@ const SHIM_BODY = `// ${marker} — QwenWorkCN Linux runtime patches
   } catch (err) {
     try { console.error("[qwenwork-linux-shim] install failed:", err); } catch (_) {}
   }
+  try {
+    // Wayland taskbar/dock icon association:
+    // On Wayland the compositor resolves a window's icon through its
+    // xdg-shell app_id -> matching .desktop file -> Icon= entry. Electron's
+    // default app_id does not match our qwenwork-cn.desktop, so the taskbar
+    // falls back to the generic "application" icon. app.setDesktopName()
+    // (documented Electron API for Linux) pins the xdg app_id / X11 WM_CLASS
+    // to the .desktop base name, making KDE/GNOME show the app icon.
+    var electron = require("electron");
+    var desktopName = process.env.QWENWORK_APP_ID || "qwenwork-cn";
+    if (electron && electron.app && typeof electron.app.setDesktopName === "function") {
+      electron.app.setDesktopName(desktopName);
+    }
+  } catch (err) {
+    try { console.error("[qwenwork-linux-shim] setDesktopName failed:", err); } catch (_) {}
+  }
 })();
 `;
 
@@ -266,6 +282,28 @@ if (fs.existsSync(mainPath)) {
             log('patched startManifestCheck (skip on Linux)');
         } else {
             console.warn('  [apply-linux-patches] WARN: startManifestCheck anchor not found; VM manifest check left as-is');
+        }
+
+        // Patch 3d — initGpuGuard(): upstream disables hardware acceleration on
+        // every platform that is neither macOS nor OpenHarmony
+        // (initGpuGuard: !isMac && !isOpenHarmony -> app.disableHardwareAcceleration()),
+        // which on Linux forces SwiftShader software rendering — slow startup
+        // and janky UI on machines with perfectly working GL/Vulkan drivers.
+        // We keep the upstream behavior on macOS/OHOS/Windows identical and
+        // only skip the disable call on Linux so the GPU process runs with
+        // hardware acceleration.
+        const gpuGuardAnchor = 'function initGpuGuard(){!constants$2.o&&!constants$2.m&&electron.app.disableHardwareAcceleration(),constants$2.s&&(';
+        const gpuGuardIdx = mainSource.indexOf(gpuGuardAnchor);
+        if (gpuGuardIdx >= 0) {
+            const gpuGuardPatched =
+                'function initGpuGuard(){(!constants$2.o&&!constants$2.m&&process.platform!=="linux")&&electron.app.disableHardwareAcceleration(),constants$2.s&&(';
+            mainSource = mainSource.slice(0, gpuGuardIdx)
+                + gpuGuardPatched
+                + mainSource.slice(gpuGuardIdx + gpuGuardAnchor.length);
+            applied++;
+            log('patched initGpuGuard (keep hardware acceleration on Linux)');
+        } else {
+            console.warn('  [apply-linux-patches] WARN: initGpuGuard anchor not found; GPU guard left as-is (software rendering)');
         }
 
         if (applied > 0) {

@@ -126,6 +126,7 @@ QODER_CLI_PATH=/path/to/qoderclicn bash qwenwork-app/start.sh
 
 ## 排障
 
+- **界面卡顿 / 启动慢（NVIDIA + Wayland）**：Chromium 原生 Wayland 下 NVIDIA 驱动会触发 GPU 进程崩溃循环（`Context was lost` / dmabuf modifier 错误）并静默回退 SwiftShader 软件渲染。启动器默认使用 XWayland（`--ozone-platform=x11`，已验证 NVIDIA GLX 硬件加速正常）；若你使用 Intel/AMD 显卡或驱动已修复，可切回原生 Wayland：`QWENWORK_OZONE_PLATFORM=wayland ./qwenwork-app/start.sh`。核验方法：`ps -eo args | grep qwenwork-app/electron | grep gpu-process`，其 `/proc/<pid>/maps` 中出现 `libGLX_nvidia` 即为硬件渲染。
 - **`make package` 在部分开发壳环境下失败（Bad exit status from rpm-tmp）**：若 shell 环境设置了 `BASH_ENV`/`NODE_OPTIONS`（如某些 AI 助手会话注入的 rm 安全垫片），rpmbuild 内部清理脚本会被劫持。在干净 shell 中构建，或使用：
   `env -u BASH_ENV -u NODE_OPTIONS PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin make package`
 - **隔离目录**：本工具链对"删除"采用隔离式移动（rename），不会硬删任何文件。被替换的 macOS 二进制与旧构建树存放在 `~/.cache/qwenwork-linux/quarantine/`（/tmp 下的目标在 `/tmp/.qwenwork-linux-quarantine/`），可随时清空。

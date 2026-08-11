@@ -253,18 +253,27 @@ set -euo pipefail
 APP_DIR="\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
 export CHROME_DESKTOP="${APP_ID}.desktop"
 export ELECTRON_FORCE_IS_PACKAGED=1
+# The in-app Linux prelude calls app.setDesktopName() with this value so the
+# Wayland xdg app_id matches the .desktop base name (taskbar icon).
+export QWENWORK_APP_ID="${APP_ID}"
 
 # Defensive: when launched from a Node/Electron development shell, inherited
 # ELECTRON_RUN_AS_NODE=1 would make the Electron binary behave as plain Node
 # and reject all Chromium flags ("bad option: --no-sandbox").
 unset ELECTRON_RUN_AS_NODE
 
+# NOTE on --ozone-platform: we default to X11 (XWayland) because Chromium's
+# native Wayland GPU process crash-loops on NVIDIA+Wayland sessions
+# ("Context was lost", dmabuf modifier errors) and silently falls back to
+# SwiftShader software rendering — slow startup + janky UI. Under XWayland the
+# NVIDIA GLX path delivers full hardware acceleration (verified). Users on
+# Intel/AMD GPUs (or fixed NVIDIA drivers) can switch back to native Wayland:
+#   QWENWORK_OZONE_PLATFORM=wayland ./start.sh
 exec "\$APP_DIR/electron" \\
   --no-sandbox \\
   --disable-dev-shm-usage \\
   --disable-gpu-sandbox \\
-  --in-process-gpu \\
-  --ozone-platform-hint=auto \\
+  --ozone-platform="\${QWENWORK_OZONE_PLATFORM:-x11}" \\
   --enable-wayland-ime \\
   "\$@"
 EOF
