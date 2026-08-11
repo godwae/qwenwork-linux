@@ -284,6 +284,35 @@ if (fs.existsSync(mainPath)) {
             console.warn('  [apply-linux-patches] WARN: startManifestCheck anchor not found; VM manifest check left as-is');
         }
 
+        // Patch 3e — TrayService.createTray(): upstream registers the tray
+        // click/double-click/right-click handlers only for Windows (s) and
+        // OpenHarmony (m); on Linux no click handler exists, so single-clicking
+        // the tray icon does nothing (only the SNI/XEmbed context menu works).
+        // Electron's Linux tray DOES emit 'click' (SNI Activate / GtkStatusIcon
+        // activate), so we register the handlers on Linux too. The right-click
+        // handler's popUpContextMenu() is skipped on Linux — the desktop shell
+        // already shows the context menu natively via SNI ContextMenu, calling
+        // it again would pop a duplicate menu.
+        const trayAnchor = '(constants$2.s||constants$2.m)&&(this.tray.on("click",';
+        const trayIdx = mainSource.indexOf(trayAnchor);
+        if (trayIdx >= 0) {
+            const trayPatched = '(constants$2.s||constants$2.m||constants$2.n)&&(this.tray.on("click",';
+            mainSource = mainSource.slice(0, trayIdx) + trayPatched + mainSource.slice(trayIdx + trayAnchor.length);
+
+            const trayRcAnchor = 'this.tray.on("right-click",()=>{logger$y.info("Tray icon right-clicked"),this.tray&&this.tray.popUpContextMenu()}))';
+            const trayRcIdx = mainSource.indexOf(trayRcAnchor);
+            if (trayRcIdx >= 0) {
+                const trayRcPatched = 'this.tray.on("right-click",()=>{logger$y.info("Tray icon right-clicked"),process.platform!=="linux"&&this.tray&&this.tray.popUpContextMenu()}))';
+                mainSource = mainSource.slice(0, trayRcIdx) + trayRcPatched + mainSource.slice(trayRcIdx + trayRcAnchor.length);
+            } else {
+                console.warn('  [apply-linux-patches] WARN: tray right-click anchor not found (menu stays native)');
+            }
+            applied++;
+            log('patched TrayService.createTray (enable click restore on Linux)');
+        } else {
+            console.warn('  [apply-linux-patches] WARN: tray click anchor not found; tray click left as-is');
+        }
+
         // Patch 3d — initGpuGuard(): upstream disables hardware acceleration on
         // every platform that is neither macOS nor OpenHarmony
         // (initGpuGuard: !isMac && !isOpenHarmony -> app.disableHardwareAcceleration()),
