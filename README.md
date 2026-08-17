@@ -85,6 +85,7 @@ make build-app DMG=/path/to/dmg    # 手动指定 DMG 路径
 make run-app                       # 直接运行生成的应用（未安装）
 make package                       # 按当前发行版生成 deb/rpm/pkg.tar.zst
 make install                       # 本地安装最新产物
+make check-update                  # 查询官方是否发布了新版本（免登录）
 make clean                         # 清理构建产物
 make check                         # bash 语法自检
 ```
