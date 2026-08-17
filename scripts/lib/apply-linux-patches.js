@@ -246,18 +246,27 @@ if (fs.existsSync(mainPath)) {
 
         // Patch 3b — startVirtualHost(): no hypervisor build exists for Linux
         // hosts; return false instead of falling into the Windows code path.
-        const vmStartAnchor = 'async function startVirtualHost(r){return constants$2.o?startHvkitMac():startHvkitWin(r)}';
-        const vmStartIdx = mainSource.indexOf(vmStartAnchor);
-        if (vmStartIdx >= 0) {
-            const vmPatched =
-                'async function startVirtualHost(r){' +
-                'if(process.platform==="linux"){' +
-                'try{logger$5I.warn("[VM] Agent sandbox VM is not supported on Linux hosts (upstream ships no hvkit-linux); running without VM")}catch(_){}' +
-                'return!1}' +
-                'return constants$2.o?startHvkitMac():startHvkitWin(r)}';
-            mainSource = mainSource.slice(0, vmStartIdx)
-                + vmPatched
-                + mainSource.slice(vmStartIdx + vmStartAnchor.length);
+        // Anchor set covers 0.1.6 (constants$2.o) and 0.1.7+ (constants$2.q)
+        // minification renames; the macOS-flag constant shifted between builds.
+        let vmPatchedApplied = false;
+        for (const vmConst of ['constants$2.o', 'constants$2.q']) {
+            const vmStartAnchor = 'async function startVirtualHost(r){return ' + vmConst + '?startHvkitMac():startHvkitWin(r)}';
+            const vmStartIdx = mainSource.indexOf(vmStartAnchor);
+            if (vmStartIdx >= 0) {
+                const vmPatched =
+                    'async function startVirtualHost(r){' +
+                    'if(process.platform==="linux"){' +
+                    'try{logger$5I.warn("[VM] Agent sandbox VM is not supported on Linux hosts (upstream ships no hvkit-linux); running without VM")}catch(_){}' +
+                    'return!1}' +
+                    'return ' + vmConst + '?startHvkitMac():startHvkitWin(r)}';
+                mainSource = mainSource.slice(0, vmStartIdx)
+                    + vmPatched
+                    + mainSource.slice(vmStartIdx + vmStartAnchor.length);
+                vmPatchedApplied = true;
+                break;
+            }
+        }
+        if (vmPatchedApplied) {
             applied++;
             log('patched startVirtualHost (graceful skip on Linux)');
         } else {
@@ -284,6 +293,42 @@ if (fs.existsSync(mainPath)) {
             console.warn('  [apply-linux-patches] WARN: startManifestCheck anchor not found; VM manifest check left as-is');
         }
 
+        // Patch 3f — Block the in-app update check entirely on Linux.
+        // performCheckForUpdates() runs the upgrade query against the upstream
+        // endpoint (clientupgrade.qwenwork.cn) whenever the user is
+        // authenticated — after login the "Check for updates" menu/settings
+        // entry detects a newer upstream version and starts downloading it,
+        // which cannot work on Linux (no native Updater binary). Early-return
+        // on Linux so every entry point (menu check, settings IPC, auto poll)
+        // is a no-op. Also hide the "check for updates" app-menu item.
+        const updAnchor = 'async performCheckForUpdates(e){const n=e.explicit,i=getUpgradeVersion();';
+        const updIdx = mainSource.indexOf(updAnchor);
+        if (updIdx >= 0) {
+            const updPatched =
+                'async performCheckForUpdates(e){' +
+                'if(process.platform==="linux"){' +
+                'try{log$1.info("[NativeUpdater] Update checks disabled on the Linux port")}catch(_){}' +
+                'this.stateService.setDisabled("auto update is not supported on Linux");' +
+                'return null}' +
+                'const n=e.explicit,i=getUpgradeVersion();';
+            mainSource = mainSource.slice(0, updIdx) + updPatched + mainSource.slice(updIdx + updAnchor.length);
+            applied++;
+            log('patched performCheckForUpdates (block update check on Linux)');
+        } else {
+            console.warn('  [apply-linux-patches] WARN: performCheckForUpdates anchor not found; update check left as-is');
+        }
+
+        const updMenuAnchor = 'constants$2.a?[{label:this.updateAvailable?';
+        const updMenuIdx = mainSource.indexOf(updMenuAnchor);
+        if (updMenuIdx >= 0) {
+            const updMenuPatched = 'constants$2.a&&process.platform!=="linux"?[{label:this.updateAvailable?';
+            mainSource = mainSource.slice(0, updMenuIdx) + updMenuPatched + mainSource.slice(updMenuIdx + updMenuAnchor.length);
+            applied++;
+            log('patched menu (hide "check for updates" item on Linux)');
+        } else {
+            console.warn('  [apply-linux-patches] WARN: update menu anchor not found; item left as-is');
+        }
+
         // Patch 3e — TrayService.createTray(): upstream registers the tray
         // click/double-click/right-click handlers only for Windows (s) and
         // OpenHarmony (m); on Linux no click handler exists, so single-clicking
@@ -293,20 +338,38 @@ if (fs.existsSync(mainPath)) {
         // handler's popUpContextMenu() is skipped on Linux — the desktop shell
         // already shows the context menu natively via SNI ContextMenu, calling
         // it again would pop a duplicate menu.
-        const trayAnchor = '(constants$2.s||constants$2.m)&&(this.tray.on("click",';
-        const trayIdx = mainSource.indexOf(trayAnchor);
-        if (trayIdx >= 0) {
-            const trayPatched = '(constants$2.s||constants$2.m||constants$2.n)&&(this.tray.on("click",';
-            mainSource = mainSource.slice(0, trayIdx) + trayPatched + mainSource.slice(trayIdx + trayAnchor.length);
+        // Anchor set covers 0.1.6 ((s||m) with constants$2.n) and 0.1.7+
+        // ((t||o) with process.platform check); minifier renames the platform
+        // constants and the logger alias between builds.
+        let trayPatchedApplied = false;
+        for (const [clickAnchor, clickPatched] of [
+            ['(constants$2.s||constants$2.m)&&(this.tray.on("click",',
+             '(constants$2.s||constants$2.m||constants$2.n)&&(this.tray.on("click",'],
+            ['(constants$2.t||constants$2.o)&&(this.tray.on("click",',
+             '(constants$2.t||constants$2.o||process.platform==="linux")&&(this.tray.on("click",'],
+        ]) {
+            const trayIdx = mainSource.indexOf(clickAnchor);
+            if (trayIdx < 0) continue;
+            mainSource = mainSource.slice(0, trayIdx) + clickPatched + mainSource.slice(trayIdx + clickAnchor.length);
 
-            const trayRcAnchor = 'this.tray.on("right-click",()=>{logger$y.info("Tray icon right-clicked"),this.tray&&this.tray.popUpContextMenu()}))';
-            const trayRcIdx = mainSource.indexOf(trayRcAnchor);
-            if (trayRcIdx >= 0) {
-                const trayRcPatched = 'this.tray.on("right-click",()=>{logger$y.info("Tray icon right-clicked"),process.platform!=="linux"&&this.tray&&this.tray.popUpContextMenu()}))';
-                mainSource = mainSource.slice(0, trayRcIdx) + trayRcPatched + mainSource.slice(trayRcIdx + trayRcAnchor.length);
-            } else {
-                console.warn('  [apply-linux-patches] WARN: tray right-click anchor not found (menu stays native)');
+            const rcVariants = [
+                ['logger$y', 'this.tray.on("right-click",()=>{logger$y.info("Tray icon right-clicked"),this.tray&&this.tray.popUpContextMenu()}))'],
+                ['logger$B', 'this.tray.on("right-click",()=>{logger$B.info("Tray icon right-clicked"),this.tray&&this.tray.popUpContextMenu()}))'],
+            ];
+            for (const [, trayRcAnchor] of rcVariants) {
+                const trayRcIdx = mainSource.indexOf(trayRcAnchor);
+                if (trayRcIdx >= 0) {
+                    const trayRcPatched = trayRcAnchor.replace(
+                        'this.tray&&this.tray.popUpContextMenu()',
+                        'process.platform!=="linux"&&this.tray&&this.tray.popUpContextMenu()');
+                    mainSource = mainSource.slice(0, trayRcIdx) + trayRcPatched + mainSource.slice(trayRcIdx + trayRcAnchor.length);
+                    break;
+                }
             }
+            trayPatchedApplied = true;
+            break;
+        }
+        if (trayPatchedApplied) {
             applied++;
             log('patched TrayService.createTray (enable click restore on Linux)');
         } else {
@@ -321,14 +384,29 @@ if (fs.existsSync(mainPath)) {
         // We keep the upstream behavior on macOS/OHOS/Windows identical and
         // only skip the disable call on Linux so the GPU process runs with
         // hardware acceleration.
-        const gpuGuardAnchor = 'function initGpuGuard(){!constants$2.o&&!constants$2.m&&electron.app.disableHardwareAcceleration(),constants$2.s&&(';
-        const gpuGuardIdx = mainSource.indexOf(gpuGuardAnchor);
-        if (gpuGuardIdx >= 0) {
-            const gpuGuardPatched =
-                'function initGpuGuard(){(!constants$2.o&&!constants$2.m&&process.platform!=="linux")&&electron.app.disableHardwareAcceleration(),constants$2.s&&(';
+        // Anchor set covers 0.1.6 (!o&&!m ... s) and 0.1.7+ (!q&&!o ... t).
+        let gpuPatchedApplied = false;
+        for (const gpuAnchor of [
+            'function initGpuGuard(){!constants$2.o&&!constants$2.m&&electron.app.disableHardwareAcceleration(),constants$2.s&&(',
+            'function initGpuGuard(){!constants$2.q&&!constants$2.o&&electron.app.disableHardwareAcceleration(),constants$2.t&&(',
+        ]) {
+            const gpuGuardIdx = mainSource.indexOf(gpuAnchor);
+            if (gpuGuardIdx < 0) continue;
+            let gpuGuardPatched = gpuAnchor.replace(
+                'function initGpuGuard(){!',
+                'function initGpuGuard(){(!');
+            // insert `&&process.platform!=="linux"` before the disable call:
+            //  (!A&&!B&&process.platform!=="linux")&&electron.app.disableHardwareAcceleration()
+            gpuGuardPatched = gpuGuardPatched.replace(
+                'electron.app.disableHardwareAcceleration()',
+                'process.platform!=="linux")&&electron.app.disableHardwareAcceleration()');
             mainSource = mainSource.slice(0, gpuGuardIdx)
                 + gpuGuardPatched
-                + mainSource.slice(gpuGuardIdx + gpuGuardAnchor.length);
+                + mainSource.slice(gpuGuardIdx + gpuAnchor.length);
+            gpuPatchedApplied = true;
+            break;
+        }
+        if (gpuPatchedApplied) {
             applied++;
             log('patched initGpuGuard (keep hardware acceleration on Linux)');
         } else {

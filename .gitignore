@@ -1,21 +1,21 @@
-# Upstream software input (user-provided official DMG)
-downloads/
 
+.asar-extract/
+.asar-tool/
+build/
 # Build output / generated app payloads — never commit
-qwenwork-app/
-qwenwork-app-next/
 dist/
 dist-next/
-build/
+downloads/
+*.extracted
+*.log
+node_modules/
+qwenwork-app/
+qwenwork-app-next/
 reference/
-
 # Scratch from asar tooling
-.asar-tool/
-.asar-extract/
 .test-repack.asar
 .test-repack.asar.unpacked
-.tmp-asar-tool.js
 .tmp-asar-repack.js
-
-node_modules/
-*.log
+.tmp-asar-tool.js
+# Upstream software input (user-provided official DMG)
+# 诊断提取的 bundle（含上游内嵌凭据，禁止提交）
