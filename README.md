@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/badge/arch-ArchLinux_%7C_CachyOS_%7C_Manjaro-1793D1?style=flat&logo=arch-linux&logoColor=white" alt="AUR Package">
   <img src="https://img.shields.io/badge/rpm-Fedora_%7C_RHEL-006699?style=flat&logo=fedora&logoColor=white" alt="Fedora RHEL Support">
   <br>
-  <img src="https://img.shields.io/badge/版本适配-1.0.0_(2026--08--24_正式版)-0052D9?style=flat&logo=probot&logoColor=white" alt="Supported Version">
+  <img src="https://img.shields.io/badge/版本适配-1.0.1_(2026--08--26_正式版)-0052D9?style=flat&logo=probot&logoColor=white" alt="Supported Version">
   <img src="https://img.shields.io/badge/Electron-37.10.3-47307B?style=flat&logo=electron&logoColor=white" alt="Electron Version">
   <img src="https://img.shields.io/badge/状态-Unofficial-d73a49?style=flat" alt="Status Unofficial">
   <img src="https://img.shields.io/badge/借鉴-workbuddy--linux-2EA44F?style=flat&logo=heart&logoColor=white" alt="Based on workbuddy-linux">
@@ -55,12 +55,12 @@
 - **一键转换**：官方 DMG 放入 `downloads/`，`make deps && make build-app && make package && make install` 四步完成构建安装，自动识别发行版产出 deb / rpm / pkg.tar.zst；
 - **内置 CLI 完整移植**：从上游官方 CDN 自动下载 Linux 版 `qoderclicn`（按 glibc/musl 与 AVX2 自动选择变体），Agent 命令行能力零降级；
 - **原生模块全量 Linux 化**：5 个原生模块从源码针对 Electron 37.10.3 重建，5 个平台包版本严格对齐 DMG 内 darwin 版本，产物 100% ELF、零 Mach-O 残留（构建期自动终扫校验）；
-- **最小补丁面**：QwenWorkCN 无 WorkBuddy 的 E2BIG 环境变量问题，托盘/窗口上游已内置 Linux 分支。asar 补丁覆盖 8 处关键点（模块解析 prelude、桌面入口 `setDesktopName`、更新器禁用、VM 优雅降级 / 清单跳过、GPU 硬件加速守卫、托盘单击恢复窗口、应用内更新检查屏蔽），全部采用"双版本锚点 + 找不到则告警跳过"的容错设计，minifier 重命名常量时自动适配；
+- **最小补丁面**：QwenWorkCN 无 WorkBuddy 的 E2BIG 环境变量问题，托盘/窗口上游已内置 Linux 分支。asar 补丁覆盖 8 处关键点（模块解析 prelude、桌面入口 `setDesktopName`、更新器禁用、VM 优雅降级 / 清单跳过、GPU 硬件加速守卫、托盘单击恢复窗口、应用内更新检查屏蔽），全部采用"正则化锚点（匹配任意 minified 常量别名）+ 找不到则告警跳过"的容错设计，minifier 重命名常量时自动适配；
 - **安全构建**：全程零硬删除（隔离式移动），跨发行版依赖自动识别（apt / dnf5 / dnf / pacman / zypper）。
 
 ## 版本适配说明
 
-当前补丁已基于官方 QwenWorkCN **1.0.0**（2026-08-24 正式版，Electron `37.10.3`）验证通过，并已在 `0.1.6` / `0.1.7` / `0.1.8` / `1.0.0` 多个上游版本上完成实测。补丁脚本对每处修改均采用"双版本锚点 + 找不到锚点则告警跳过"的容错设计：上游每次发版 minifier 可能重命名常量（如 `0.1.6→0.1.7` 中 `constants$2.o→q`、`s→t`），脚本会自动尝试多个版本的锚点并选取命中的那一个，不会因常量重命名而硬失败。如遇到构建失败或运行异常，请附上所使用的 DMG 版本号提 Issue。
+当前补丁已基于官方 QwenWorkCN **1.0.0**（2026-08-24 正式版）与 **1.0.1**（build `26082607`，Electron `37.10.3`）验证通过，并已在 `0.1.6` / `0.1.7` / `0.1.8` / `1.0.0` / `1.0.1` 多个上游版本上完成实测。补丁脚本对每处修改均采用"**正则化锚点 + 找不到则告警跳过**"的容错设计：上游每次发版 minifier 都可能重命名常量（如 `0.1.6→0.1.7` 中 `constants$2.o→q`、`s→t`；`1.0.1` 中常量模块整体重命名 `constants$2→constants$3`），脚本用 `[\w$.]+` 正则匹配任意 minified 常量/logger 别名，从根上消除常量漂移导致的补丁静默失效，不会因发版而硬失败。如遇到构建失败或运行异常，请附上所使用的 DMG 版本号提 Issue。
 
 ## 快速安装
 
@@ -130,7 +130,7 @@ QODER_CLI_PATH=/path/to/qoderclicn bash qwenwork-app/start.sh
 - **界面卡顿 / 启动慢（NVIDIA + Wayland）**：Chromium 原生 Wayland 下 NVIDIA 驱动会触发 GPU 进程崩溃循环（`Context was lost` / dmabuf modifier 错误）并静默回退 SwiftShader 软件渲染。启动器默认使用 XWayland（`--ozone-platform=x11`，已验证 NVIDIA GLX 硬件加速正常）；若你使用 Intel/AMD 显卡或驱动已修复，可切回原生 Wayland：`QWENWORK_OZONE_PLATFORM=wayland ./qwenwork-app/start.sh`。核验方法：`ps -eo args | grep qwenwork-app/electron | grep gpu-process`，其 `/proc/<pid>/maps` 中出现 `libGLX_nvidia` 即为硬件渲染。
 - **`make package` 在部分开发壳环境下失败（Bad exit status from rpm-tmp）**：若 shell 环境设置了 `BASH_ENV`/`NODE_OPTIONS`（如某些 AI 助手会话注入的 rm 安全垫片），rpmbuild 内部清理脚本会被劫持。在干净 shell 中构建，或使用：
   `env -u BASH_ENV -u NODE_OPTIONS PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin make package`
-- **升级新版 DMG 重建后界面卡顿**：上游每次发版 minifier 可能重命名常量（0.1.6→0.1.7 中 `constants$2.o→q`、`s→t`，1.0.0 亦曾重排常量），导致部分 asar 补丁锚点失效、GPU 硬件加速等补丁静默未应用。本工具已支持多版本锚点自动适配（`0.1.6` / `0.1.7` / `0.1.8` / `1.0.0`）；重建后请检查构建日志中全部 `patched ...` 行是否齐全，若有 `WARN: ... anchor not found` 需更新锚点。可用 `scripts/check-upstream-version.sh` 之外，用 `grep -c "libGLX_nvidia" /proc/<gpu-pid>/maps` 核验硬件渲染。
+- **升级新版 DMG 重建后界面卡顿**：上游每次发版 minifier 都可能重命名常量（0.1.6→0.1.7 中 `constants$2.o→q`、`s→t`；1.0.0 亦曾局部重排；1.0.1 中常量模块整体重命名 `constants$2→constants$3`，导致 V6 的逐版本枚举锚点第三次失效、GPU 守卫/VM/托盘/更新检查四处补丁静默跳过，回落 SwiftShader 软件渲染）。本工具的 asar 补丁已升级为 **V7 正则泛化锚点**（`[\w$.]+` 匹配任意 minified 常量/logger 别名），将 `0.1.6` / `0.1.7` / `0.1.8` / `1.0.0` / `1.0.1` 的常量重排一次性覆盖，从根上根治补丁静默失效；重建后请检查构建日志中全部 `patched ...` 行是否齐全、有无 `WARN: ... anchor not found`。除 `scripts/check-upstream-version.sh` 外，亦可用 `grep -c "libGLX_nvidia" /proc/<gpu-pid>/maps` 核验硬件渲染。
 - **隔离目录**：本工具链对"删除"采用隔离式移动（rename），不会硬删任何文件。被替换的 macOS 二进制与旧构建树存放在 `~/.cache/qwenwork-linux/quarantine/`（/tmp 下的目标在 `/tmp/.qwenwork-linux-quarantine/`），可随时清空。
 - **启动报 `bad option: --no-sandbox`**：当前 shell 导出了 `ELECTRON_RUN_AS_NODE=1`（Node 开发环境常见）。`start.sh` 已内置防御性 `unset`，或手动 `env -u ELECTRON_RUN_AS_NODE ./qwenwork-app/start.sh`。
 
@@ -192,7 +192,7 @@ qwenwork-linux/
 
 This is an unofficial community tool that converts your legally obtained official QwenWorkCN (千问办公) macOS Intel/x64 DMG into a locally-built Linux x64 Electron application. It never redistributes upstream software: you place the official DMG into `downloads/`, then run `make deps && make build-app && make package && make install`.
 
-Verified against the official QwenWorkCN **1.0.0** stable release (2026-08-24, Electron `37.10.3`), and tested across `0.1.6` / `0.1.7` / `0.1.8` / `1.0.0`. The asar patches use dual-version anchors with graceful fallback, so they survive upstream minifier constant renames between releases.
+Verified against the official QwenWorkCN **1.0.0** (2026-08-24) and **1.0.1** (build `26082607`, Electron `37.10.3`), and tested across `0.1.6` / `0.1.7` / `0.1.8` / `1.0.0` / `1.0.1`. The asar patches use V7 regex-generalized anchors (`[\w$.]+` matches any minified constant/logger alias) with graceful fallback, so they survive upstream minifier constant renames between releases.
 
 The port replaces the macOS Electron runtime (37.10.3) with the Linux one, rebuilds native modules (`node-pty`, `better-sqlite3`, `keytar`, `zstd-napi`, `uiohook-napi`) from npm source against Linux Electron headers, installs exact-version Linux platform packages (`@img/sharp-linux-x64`, `@esbuild/linux-x64`, `@rollup/rollup-linux-x64-gnu`, `@nut-tree-fork/libnut-linux`, ...), downloads the official Linux build of the bundled agent CLI (`qoderclicn`) from the upstream CDN, and applies a small set of asar patches (module-resolution prelude, graceful updater/VM degradation, Linux package injection, window icon injection).
 
