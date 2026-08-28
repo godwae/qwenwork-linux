@@ -19,7 +19,7 @@
 #   4. Header hygiene: drop unpacked references to files we deleted; register
 #      the injected Linux platform packages as unpacked entries.
 
-LINUX_PATCHES_SHIM_MARKER="__QWENWORK_LINUX_PATCHES_V6__"
+LINUX_PATCHES_SHIM_MARKER="__QWENWORK_LINUX_PATCHES_V7__"
 
 apply_linux_runtime_patches() {
     local app_dir="$1"
