@@ -42,7 +42,10 @@ install:
 	bash scripts/install-package.sh
 
 check-update:
-	bash scripts/check-upstream-version.sh
+	@bash scripts/check-upstream-version.sh; \
+	rc=$$?; \
+	if [ $$rc -eq 1 ]; then exit 0; fi; \
+	exit $$rc
 
 check:
 	bash -n install.sh scripts/*.sh scripts/lib/*.sh
