@@ -472,6 +472,27 @@ for (const rel of LINUX_INJECT_PACKAGES) {
     }
 }
 
+// uiohook-napi loads its native addon through node-gyp-build, but the
+// upstream macOS asar carries no Linux .node header entries under
+// build/Release — the Linux build produced in Phase 3 lives only on disk.
+// Without a header entry the asar fs wrapper reports an empty build/Release,
+// node-gyp-build throws "No native build was found", and the main process
+// crashes on startup. Stage the on-disk build so the repack registers it.
+const injectedNativeFiles = [];
+const UIOHOOK_NATIVE_FILES = [
+    'node_modules/uiohook-napi/build/Release/uiohook_napi.node',
+];
+for (const rel of UIOHOOK_NATIVE_FILES) {
+    const src = path.join(unpackedSiblingDir, rel);
+    const dst = path.join(tmpDir, rel);
+    if (fs.existsSync(src) && !fs.existsSync(dst)) {
+        fs.mkdirSync(path.dirname(dst), { recursive: true });
+        fs.copyFileSync(src, dst);
+        injectedNativeFiles.push(rel);
+        log('injected uiohook-napi native build -> ' + rel);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // 5. Repack, preserving the original unpacked layout.
 //
@@ -555,6 +576,11 @@ function findPartialFiles(node, relPath) {
     }
 }
 findPartialFiles(header, '');
+for (const rel of injectedNativeFiles) {
+    if (!partialUnpackedFiles.includes(rel)) {
+        partialUnpackedFiles.push(rel);
+    }
+}
 log('Partially-unpacked individual files: ' + partialUnpackedFiles.length);
 
 const unpackPattern = partialUnpackedFiles.length

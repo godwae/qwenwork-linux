@@ -229,9 +229,12 @@ rebuild_critical_modules() {
 
     # --- Critical modules (build failure = fatal error) ---
     # node-pty: built-in terminal. better-sqlite3: local data layer (drizzle-orm).
+    # uiohook-napi: global input hooks — hard-required by the main process at
+    # startup (crash if its .node is missing), so it must NOT be optional.
     local -a critical_modules=(
         "node-pty"
         "better-sqlite3"
+        "uiohook-napi"
     )
 
     for module_name in "${critical_modules[@]}"; do
@@ -243,13 +246,25 @@ rebuild_critical_modules() {
         build_native_module_fresh "$app_dir" "$module_name" "$module_version" 0
     done
 
+    # --- Critical-module verification ---
+    # A silent missing .node here ships an app that crashes on launch (the
+    # main process requires these modules unconditionally). Fail the build
+    # loudly instead of warning and continuing.
+    local node_count
+    for module_name in "${critical_modules[@]}"; do
+        node_count="$(find "$app_dir/node_modules/$module_name" -name '*.node' -type f 2>/dev/null | wc -l)"
+        if [ "$node_count" -eq 0 ]; then
+            error "Critical native module $module_name produced no .node build; the app would crash at startup.
+Install its build dependencies (X11/Xtst/Xinerama/Xrandr development headers — see make deps) and rebuild."
+        fi
+        info "  Verified $module_name: $node_count native file(s) present"
+    done
+
     # --- Optional modules (build failure = warning only) ---
     # keytar: OS keychain (libsecret on Linux). zstd-napi: compression.
-    # uiohook-napi: global input hooks (needs X11/Xtst dev headers).
     local -a optional_modules=(
         "keytar"
         "zstd-napi"
-        "uiohook-napi"
     )
 
     for module_name in "${optional_modules[@]}"; do
