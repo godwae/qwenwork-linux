@@ -1,0 +1,219 @@
+name: 运行时问题 / Runtime bug
+description: 应用能启动，但界面、功能、账号或性能表现异常
+title: "[Runtime]: "
+labels: [ "bug", "needs-triage" ]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > 请先完成下方「提交前检查」。**信息越完整，定位越快**；缺关键环境信息的 issue 会被要求补充，可能长时间无法推进。
+        > English reports are welcome — 可以英文填写。
+        >
+        > 如果你卡在 `make` 构建 / 打包 / 安装阶段，请改用 **「构建打包失败 / Build failure」** 模板。
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: 提交前检查 / Pre-flight checklist
+      options:
+        - label: 已搜索现有 issue（含已关闭），确认不是重复问题
+        - label: 已阅读 README 的「移植后的已知限制」，确认不属于已知降级（Agent 沙盒 VM 不可用、自动更新禁用、macOS 专属能力降级、剪贴板依赖 xsel）
+        - label: 已 `git pull` 拉取本仓库最新代码
+        - label: 已重新执行 `make build-app` 并重新安装，问题在最新产物上仍复现（旧产物导致的问题请先重建再报）
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: 问题分类 / Category
+      description: 选最接近的一项，便于快速分派。
+      options:
+        - 窗口与界面（窗口控制按钮、标题栏、缩放、多屏）
+        - 渲染与 GPU 硬件加速（卡顿、掉帧、疑似软件渲染）
+        - 登录与账号
+        - 托盘图标与托盘菜单（单击无法恢复窗口等）
+        - 终端 / PTY / 内置 CLI（qoderclicn）
+        - 文件与文档（打开、预览、保存、拖拽）
+        - 更新相关（检查更新菜单项、更新提示）
+        - 输入法 / IME
+        - 剪贴板
+        - 性能、卡死或崩溃
+        - 其它
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 环境信息 / Environment
+      description: >
+        请在终端执行下面这段脚本，把**完整输出**粘贴进来。手工填写容易遗漏，强烈建议直接粘贴命令输出。
+      value: |
+        <details>
+        <summary>一键采集脚本（复制粘贴执行）</summary>
+
+        ```bash
+        {
+          echo "=== /etc/os-release ==="; cat /etc/os-release
+          echo; echo "=== session ==="
+          echo "XDG_SESSION_TYPE=$XDG_SESSION_TYPE"
+          echo "XDG_CURRENT_DESKTOP=$XDG_CURRENT_DESKTOP"
+          echo "WAYLAND_DISPLAY=$WAYLAND_DISPLAY"
+          echo "DISPLAY=$DISPLAY"
+          echo; echo "=== kernel ==="; uname -a
+          echo; echo "=== build-info.json ==="
+          cat /opt/qwenwork-cn/.qwenwork-linux/build-info.json 2>/dev/null \
+            || cat "$PWD/qwenwork-app/.qwenwork-linux/build-info.json" 2>/dev/null \
+            || echo "NOT FOUND"
+          echo; echo "=== gpu ==="
+          lspci -k 2>/dev/null | grep -iEA2 'vga|3d|display' || echo "lspci unavailable"
+          echo; echo "=== toolchain ==="
+          echo "node: $(node -v 2>/dev/null || echo none)"
+          echo "npm:  $(npm -v 2>/dev/null || echo none)"
+          echo "git HEAD: $(git rev-parse --short HEAD 2>/dev/null || echo n/a)"
+        } 2>&1
+        ```
+        </details>
+
+        粘贴输出：
+    validations:
+      required: true
+
+  - type: dropdown
+    id: session_type
+    attributes:
+      label: 会话类型 / Session type
+      description: >
+        X11 与 Wayland 下窗口行为差异很大。**本移植版启动器默认使用 XWayland**（`--ozone-platform=x11`），
+        因为 NVIDIA 显卡在 Chromium 原生 Wayland 下会触发 GPU 进程崩溃循环并回退软件渲染。
+      options:
+        - X11 / XWayland（默认，未额外设置时的行为）
+        - Wayland（显式设置了 QWENWORK_OZONE_PLATFORM=wayland）
+        - 不确定
+    validations:
+      required: true
+
+  - type: dropdown
+    id: build_state
+    attributes:
+      label: 产物状态 / Build state
+      description: 很多"问题"其实来自未重建的旧产物。上游发版后 minified 常量可能重排，导致 asar 补丁静默跳过。请如实选择。
+      options:
+        - 已拉最新代码并重新 `make build-app`，问题仍然复现
+        - 在旧产物上出现，尚未重新构建
+        - 重新构建后问题消失（说明是旧产物导致，可关闭）
+        - 使用他人提供的预编译包，未自行构建
+        - 不确定
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 现象与复现步骤 / Steps to reproduce
+      description: 请写清「做了什么 → 期望发生什么 → 实际发生什么」。可稳定复现的步骤对定位极为关键。
+      placeholder: |
+        1. 启动应用（/opt/qwenwork-cn/start.sh 或 ~/qwenwork-linux/qwenwork-app/start.sh）
+        2. 点击 ...
+        3. 期望：...
+           实际：...
+        复现频率：每次 / 偶尔（约 x/10）
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 截图或录屏 / Screenshots
+      description: 界面类问题请务必附上。可直接拖拽图片到此处。录屏推荐用 Kooha（Wayland）或 OBS。
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 终端日志 / Logs
+      description: >
+        请用终端启动并附完整输出。日志默认只输出到终端，不写文件：
+
+
+        `ELECTRON_ENABLE_LOGGING=1 /opt/qwenwork-cn/start.sh 2>&1 | tee /tmp/qwenwork.log`
+
+
+        崩溃类问题若有 `core dumped`、`SIGSEGV`、`GPU process exited` 等关键字，请一并贴出。
+      placeholder: |
+        ```
+        粘贴终端输出
+        ```
+
+  - type: textarea
+    id: gpu_check
+    attributes:
+      label: GPU / 渲染核验（卡顿、掉帧类问题建议填写）
+      description: >
+        **若问题表现为界面卡顿、掉帧，或分类选了「渲染与 GPU 硬件加速」，请执行下面脚本并粘贴输出。**
+        正常状态下应能查到 GPU 进程且 `libGLX_nvidia` 映射数大于 0（NVIDIA 显卡），
+        gl flags 不应出现 `swiftshader`，渲染进程的 `disable-gpu-compositing` 计数应为 0。
+        若出现 `swiftshader` 或计数不为 0，说明已回退软件渲染，多半是 asar 补丁未生效（上游常量重排）。
+      value: |
+        ```bash
+        {
+          echo "=== 主进程 ==="
+          MAIN=$(pgrep -f "qwenwork" | head -1)
+          echo "main pid: ${MAIN:-NOT RUNNING}"
+          echo; echo "=== 子进程类型 ==="
+          [ -n "$MAIN" ] && for pid in $(ps --ppid "$MAIN" -o pid= 2>/dev/null); do
+            t=$(tr '\0' '\n' < /proc/$pid/cmdline 2>/dev/null | grep -a "^--type=" | head -1)
+            echo "  pid=$pid ${t:-main/utility}"
+          done
+          echo; echo "=== GPU 进程与硬件渲染 ==="
+          for pid in $(pgrep -x electron 2>/dev/null); do
+            if tr '\0' '\n' < /proc/$pid/cmdline 2>/dev/null | grep -qa "type=gpu-process"; then
+              echo "GPU pid=$pid"
+              echo "  libGLX_nvidia mappings: $(grep -c libGLX_nvidia /proc/$pid/maps 2>/dev/null)"
+              echo "  gl flags: $(tr '\0' '\n' < /proc/$pid/cmdline | grep -aE -- '--use-gl|--use-angle' | tr '\n' ' ')"
+            fi
+          done
+          echo; echo "=== 渲染进程 disable-gpu-compositing 计数（0 = 未降级）==="
+          for pid in $(pgrep -x electron 2>/dev/null); do
+            if tr '\0' '\n' < /proc/$pid/cmdline 2>/dev/null | grep -qa "type=renderer"; then
+              echo "  renderer $pid: $(tr '\0' '\n' < /proc/$pid/cmdline | grep -ac disable-gpu-compositing)"
+            fi
+          done
+        } 2>&1
+        ```
+
+        粘贴输出：
+
+  - type: textarea
+    id: patches
+    attributes:
+      label: 补丁校验输出 / Patch verification
+      description: >
+        请在仓库目录重新执行 `make build-app`，把构建日志中以 `patched ` 开头的行
+        以及任何 `WARN: ... anchor not found` 贴在这里，并附上 `make check` 的输出。
+        上游升级后 minified 常量可能重排导致补丁静默跳过（本项目 V7 已用正则泛化锚点缓解），
+        这一步能立刻排除"补丁没打上"的可能。
+      placeholder: |
+        patched out/main/index.js (module resolution prelude)
+        patched initGpuGuard (keep hardware acceleration on Linux)
+        ...
+        （如有 WARN: ... anchor not found 请一并贴出）
+
+  - type: textarea
+    id: network
+    attributes:
+      label: 网络与代理环境 / Network & proxy
+      description: >
+        **登录、账号、云端同步、内置 CLI 相关问题必填。** 本应用的升级查询与内置 CLI 下载分别走
+        `clientupgrade.qwenwork.cn` 与 `static.qoder.com.cn`，代理分流不正确会导致登录区域判定错误或下载失败。
+      placeholder: |
+        是否使用代理 / 透明代理：是（sing-box / Clash / 软路由 ...）/ 否
+        分流规则中是否放行 qwenwork.cn、qoder.com.cn 及阿里、钉钉相关域名：是 / 否 / 不清楚
+        出口 IP 归属地区：中国大陆 / 境外 / 不清楚
+
+  - type: textarea
+    id: attempted
+    attributes:
+      label: 已尝试的排查 / What you tried
+      placeholder: |
+        - 重新构建：...
+        - 切换 X11 / Wayland（QWENWORK_OZONE_PLATFORM=wayland）：...
+        - 其它：...

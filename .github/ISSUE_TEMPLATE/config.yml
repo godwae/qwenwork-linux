@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 已知限制与排障 / Known limitations
+    url: https://github.com/godwae/qwenwork-linux#readme
+    about: Agent 沙盒 VM 不可用、自动更新禁用、macOS 专属能力降级、GPU 卡顿等已知问题与排障步骤都记录在 README，请先确认不属于已知项。
+  - name: 搜索现有 issue（含已关闭）
+    url: https://github.com/godwae/qwenwork-linux/issues?q=is%3Aissue
+    about: 请连同已关闭的 issue 一起搜索，避免重复提交。
+  - name: 上游是否发布了新版本 / Upstream version
+    url: https://github.com/godwae/qwenwork-linux#构建与运行
+    about: Linux 移植版的「检查更新」已被补丁禁用（1.0.1 起菜单项仍可见但点击无效）。想确认官方是否发版，请在仓库目录执行 make check-update。
+  - name: 使用咨询与讨论 / Discussions
+    url: https://github.com/godwae/qwenwork-linux/discussions
+    about: 环境搭配、配置技巧、非缺陷类问题请到 Discussions，不要占用 issue 队列。
