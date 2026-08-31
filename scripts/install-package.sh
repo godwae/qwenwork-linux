@@ -48,15 +48,23 @@ install_pacman() {
 }
 
 main() {
-    if command -v dpkg >/dev/null 2>&1 && install_deb; then
-        return 0
-    fi
-    if install_rpm; then
-        return 0
-    fi
-    if install_pacman; then
-        return 0
-    fi
+    # Route by the distro's native family (from /etc/os-release) rather than
+    # tool availability, so an RPM system that happens to have dpkg installed
+    # still installs its own .rpm artifact. detect_package_family falls back
+    # to tool availability when os-release is unrecognised.
+    local family
+    family="$(detect_package_family)"
+    case "$family" in
+        deb)
+            install_deb && return 0
+            ;;
+        rpm)
+            install_rpm && return 0
+            ;;
+        pacman)
+            install_pacman && return 0
+            ;;
+    esac
 
     error "No installable package artifact found in dist/. Run make package first."
 }

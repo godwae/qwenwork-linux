@@ -86,7 +86,7 @@ make build-app                     # 使用 downloads/ 下唯一的 DMG
 make build-app DMG=/path/to/dmg    # 手动指定 DMG 路径
 make run-app                       # 直接运行生成的应用（未安装）
 make fix-rpaths                    # 就地清理原生模块里的构建机私有 RPATH
-make package                       # 按当前发行版生成 deb/rpm/pkg.tar.zst
+make package                       # 按当前发行版生成 deb/rpm/pkg.tar.zst（按 /etc/os-release 自动识别）
 make install                       # 本地安装最新产物
 make check-update                  # 查询官方是否发布新版本（免登录）
 make clean                         # 清理构建产物
@@ -110,6 +110,7 @@ make check                         # bash 语法自检
 ## 常用自定义配置
 
 ```bash
+PACKAGE_FORMAT=rpm make package                # 强制指定打包格式（deb/rpm/pacman）
 QWENWORK_INSTALL_DIR=/opt/tmp/qwenwork-app bash install.sh               # 自定义安装目录
 ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ bash install.sh  # Electron 镜像源
 ELECTRON_HEADERS_URL=https://artifacts.electronjs.org/headers/dist bash install.sh  # 头文件地址
