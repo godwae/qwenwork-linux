@@ -71,7 +71,17 @@ EOF
 
     (
         cd "$PKG_WORK"
-        makepkg -f --noconfirm
+        # Same environment hardening as build-rpm.sh: makepkg shells out to
+        # rm/chmod during packaging and cleanup. `env -i` drops any PATH shims,
+        # $BASH_ENV, and exported BASH_FUNC_rm* functions (WorkBuddy's
+        # safe-delete guard) that would otherwise abort those steps.
+        env -i \
+            HOME="$HOME" \
+            USER="${USER:-$(id -un)}" \
+            LOGNAME="${LOGNAME:-$(id -un)}" \
+            LANG="${LANG:-C.UTF-8}" \
+            PATH="$(system_first_path)" \
+            makepkg -f --noconfirm
     )
 
     mkdir -p "$DIST_DIR"

@@ -99,7 +99,22 @@ cp -a $PKG_ROOT/. %{buildroot}/
 $icon_files_entry
 EOF
 
-    rpmbuild --define "_topdir $output_dir" --define "_build_id_links none" -bb "$SPEC_FILE" >&2
+    # rpmbuild shells out to rm/chmod/strip during %install and %rmbuild and
+    # aborts on any non-zero exit. A shim directory injected ahead of /usr/bin
+    # on PATH — plus the bash `rm` function it exports via $BASH_ENV (e.g.
+    # WorkBuddy's safe-delete guard) — breaks the buildroot cleanup with a
+    # bulk-delete confirmation prompt. `env -i` gives rpmbuild a pristine
+    # environment: no inherited PATH shims, no $BASH_ENV, no exported
+    # BASH_FUNC_rm* functions, so every spawned /bin/sh resolves the real rm.
+    # Keep only the variables rpm needs.
+    env -i \
+        HOME="$HOME" \
+        USER="${USER:-$(id -un)}" \
+        LOGNAME="${LOGNAME:-$(id -un)}" \
+        LANG="${LANG:-C.UTF-8}" \
+        PATH="$(system_first_path)" \
+        TMPDIR="${TMPDIR:-/tmp}" \
+        rpmbuild --define "_topdir $output_dir" --define "_build_id_links none" -bb "$SPEC_FILE" >&2
     mkdir -p "$DIST_DIR"
     find "$output_dir/RPMS" -type f -name "*.rpm" -exec cp {} "$output_file" \;
     [ -f "$output_file" ] || error "RPM was not produced"

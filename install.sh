@@ -27,6 +27,7 @@ PROVIDED_INPUT=""
 FRESH=0
 
 . "$SCRIPT_DIR/scripts/lib/common.sh"
+. "$SCRIPT_DIR/scripts/lib/rpath.sh"
 . "$SCRIPT_DIR/scripts/lib/dmg.sh"
 . "$SCRIPT_DIR/scripts/lib/electron.sh"
 . "$SCRIPT_DIR/scripts/lib/native-modules.sh"
@@ -138,20 +139,22 @@ copy_app_payload() {
 
     if [ -d "$app_asar_unpacked" ]; then
         info "Copying app.asar.unpacked"
-        # Merge-copy idiom: safe even if the destination already exists
+        # Merge-copy via tar so macOS xattr sidecars are excluded. 7z writes
+        # APFS extended attributes (provenance, code-signature, etc.) as
+        # sibling files named "<target>:com.apple.<attr>". These are useless on
+        # Linux, have illegal ':' in the name, and leak into RPM packages.
         mkdir -p "$INSTALL_DIR/resources/app.asar.unpacked"
-        cp -a "$app_asar_unpacked/." "$INSTALL_DIR/resources/app.asar.unpacked/"
+        (cd "$app_asar_unpacked" && tar --exclude='*:com.apple.*' -cf - .) \
+            | (cd "$INSTALL_DIR/resources/app.asar.unpacked" && tar -xf -)
     fi
 
-    # Loose Resources payload. 7z extracts macOS code-signature sidecars as
-    # "<name>:com.apple.cs.*" files — they are AppleDouble artifacts and must
-    # never be copied to the Linux payload.
+    # Loose Resources payload. Same sidecar exclusion as app.asar.unpacked.
     local entry base
     for entry in "${RESOURCE_PAYLOAD_DIRS[@]}"; do
         if [ -d "$resources_dir/$entry" ]; then
             info "Copying resources/$entry"
             mkdir -p "$INSTALL_DIR/resources/$entry"
-            (cd "$resources_dir/$entry" && tar --exclude='*:com.apple.cs.*' -cf - .) | (cd "$INSTALL_DIR/resources/$entry" && tar -xf -)
+            (cd "$resources_dir/$entry" && tar --exclude='*:com.apple.*' -cf - .) | (cd "$INSTALL_DIR/resources/$entry" && tar -xf -)
         else
             warn "resources/$entry not found in app bundle (skipped)"
         fi

@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: help deps build-app run-app deb rpm pacman package install check-update clean check
+.PHONY: help deps build-app run-app fix-rpaths deb rpm pacman package install check-update clean check
 
 help:
 	@echo "Targets:"
@@ -8,6 +8,7 @@ help:
 	@echo "  make build-app"
 	@echo "  make build-app DMG=/path/to/QwenWorkCN.dmg"
 	@echo "  make run-app"
+	@echo "  make fix-rpaths"
 	@echo "  make deb"
 	@echo "  make rpm"
 	@echo "  make pacman"
@@ -25,6 +26,9 @@ build-app:
 
 run-app:
 	bash qwenwork-app/start.sh
+
+fix-rpaths:
+	bash scripts/fix-rpaths.sh
 
 deb:
 	bash scripts/build-deb.sh

@@ -167,6 +167,14 @@ build_native_module_fresh() {
     info "  Building $module_name@$module_version from source for Electron $ELECTRON_VERSION"
     (
         cd "$build_dir"
+
+        # Pin the SYSTEM toolchain. Conda/Linuxbrew compilers inject
+        # "-Wl,-rpath,<prefix>/lib" into every .node they link, which both
+        # ties the binary to a private directory and makes rpmbuild's
+        # check-rpaths fail with "ERROR 0002 ... invalid rpath".
+        eval "$(build_toolchain_env)"
+        export CC CXX LINK LDFLAGS LD_RUN_PATH LIBRARY_PATH CPPFLAGS
+
         echo '{"private":true}' > package.json
 
         # Install Electron (headers only, skip the full download)
@@ -422,6 +430,13 @@ rebuild_native_modules() {
     # ship their own darwin/win32 prebuilds (e.g. node-pty prebuilds/darwin-*);
     # quarantine them so the payload is 100% Linux-clean.
     purge_remaining_foreign_binaries "$app_dir"
+    info ""
+
+    # Phase 6: Strip build-machine-only RPATH/RUNPATH entries.
+    # Safety net for Phase 3/4 modules whose build system ignored CC/CXX
+    # (or when an existing tree was built before this hygiene step existed).
+    info "=== Phase 6: Sanitizing RPATH/RUNPATH ==="
+    scrub_local_rpaths "$app_dir"
     info ""
 
     # Final verification

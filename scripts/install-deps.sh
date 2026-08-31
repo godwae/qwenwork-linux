@@ -159,7 +159,7 @@ install_apt() {
         libx11-dev libxtst-dev libxt-dev libxext-dev libxi-dev libxinerama-dev libxkbcommon-dev \
         libxkbfile-dev libsecret-1-dev libkrb5-dev \
         xsel libxtst6 \
-        dpkg-dev fakeroot desktop-file-utils icnsutils imagemagick
+        dpkg-dev fakeroot desktop-file-utils icnsutils imagemagick patchelf
     ensure_apt_nodejs
 }
 
@@ -170,7 +170,7 @@ install_dnf5() {
         libX11-devel libXtst-devel libXt-devel libXext-devel libXi-devel libXinerama-devel libxkbcommon-devel \
         libxkbfile-devel libsecret-devel krb5-devel \
         xsel libXtst \
-        rpm-build desktop-file-utils ImageMagick
+        rpm-build desktop-file-utils ImageMagick patchelf
     ensure_generic_nodejs
 }
 
@@ -181,7 +181,7 @@ install_dnf() {
         libX11-devel libXtst-devel libXt-devel libXext-devel libXi-devel libXinerama-devel libxkbcommon-devel \
         libxkbfile-devel libsecret-devel krb5-devel \
         xsel libXtst \
-        rpm-build desktop-file-utils ImageMagick
+        rpm-build desktop-file-utils ImageMagick patchelf
     ensure_generic_nodejs
 }
 
@@ -190,7 +190,7 @@ install_pacman() {
     sudo pacman -S --needed --noconfirm \
         bash curl unzip 7zip python nodejs npm base-devel zstd fakeroot \
         libx11 libxtst libxt libxext libxi libxinerama libxkbcommon libxkbfile libsecret krb5 xsel \
-        desktop-file-utils imagemagick
+        desktop-file-utils imagemagick patchelf
     ensure_generic_nodejs
 }
 
@@ -201,7 +201,7 @@ install_zypper() {
         libX11-devel libXtst-devel libXt-devel libXext-devel libXi-devel libXinerama-devel libxkbcommon-devel \
         libxkbfile-devel libsecret-devel krb5-devel \
         xsel libXtst \
-        rpm-build desktop-file-utils ImageMagick
+        rpm-build desktop-file-utils ImageMagick patchelf
     ensure_generic_nodejs
 }
 
@@ -216,7 +216,7 @@ main() {
         pacman) install_pacman ;;
         zypper) install_zypper ;;
         *)
-            error "Unsupported package manager. Install bash, curl, unzip, 7z/7zz, python3, Node.js $MIN_NODE_MAJOR+, npm, npx, make, g++, X11/libXtst/libxkbfile/libsecret/krb5 development headers, xsel, then re-run make build-app."
+            error "Unsupported package manager. Install bash, curl, unzip, 7z/7zz, python3, Node.js $MIN_NODE_MAJOR+, npm, npx, make, g++, patchelf, X11/libXtst/libxkbfile/libsecret/krb5 development headers, xsel, then re-run make build-app."
             ;;
     esac
 

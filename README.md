@@ -85,6 +85,7 @@ make install
 make build-app                     # 使用 downloads/ 下唯一的 DMG
 make build-app DMG=/path/to/dmg    # 手动指定 DMG 路径
 make run-app                       # 直接运行生成的应用（未安装）
+make fix-rpaths                    # 就地清理原生模块里的构建机私有 RPATH
 make package                       # 按当前发行版生成 deb/rpm/pkg.tar.zst
 make install                       # 本地安装最新产物
 make check-update                  # 查询官方是否发布新版本（免登录）
@@ -121,8 +122,10 @@ QWENWORK_OZONE_PLATFORM=wayland ./qwenwork-app/start.sh                  # 切�
 
 - **界面卡顿 / 启动慢（NVIDIA + Wayland）**：原生 Wayland 下 NVIDIA 触发 GPU 崩溃循环并回退软件渲染 → 启动器默认 XWayland（`--ozone-platform=x11`）；改用原生 Wayland：`QWENWORK_OZONE_PLATFORM=wayland ./qwenwork-app/start.sh`。核验：`grep -c libGLX_nvidia /proc/<gpu-pid>/maps`。
 - **升级新版 DMG 后卡顿**：上游 minifier 重排常量导致补丁锚点静默失效 → 重建后检查构建日志的 `patched ...` 行是否齐全、有无 `WARN: ... anchor not found`。
-- **`make package` 报 `Bad exit status from rpm-tmp`**：shell 注入的 `BASH_ENV`/`NODE_OPTIONS` 劫持了 rpmbuild 清理脚本 → `env -u BASH_ENV -u NODE_OPTIONS PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin make package`
+- **`make rpm` 报 `ERROR 0002: file '...' contains an invalid rpath '/home/<user>/anaconda3/lib'`**：conda / Anaconda / Linuxbrew 的 `gcc` 排在 `PATH` 前面，它每链接一个动态库都会注入 `-Wl,-rpath,<前缀>/lib`（为了找到自带的 libstdc++），于是 `node-pty`、`better-sqlite3` 等源码重建的 `.node` 被烙上构建机私有路径，rpmbuild 的 `check-rpaths` 因此拒绝打包 → 旧产物执行 `make fix-rpaths` 就地剥离（保留 `$ORIGIN` 相对路径）；新构建已强制使用系统编译器（`/usr/bin/gcc`）并清空 `LDFLAGS`/`LD_RUN_PATH`/`LIBRARY_PATH`，另在重建后自动做一遍 RPATH 清理，无需手动干预。
+- **`make rpm` / `make package` 报 `Bad exit status from rpm-tmp ... (%install)/(rmbuild)`**：本机若运行着 WorkBuddy（或其它通过 `$BASH_ENV` 注入命令垫片的工具），其 `rm` 垫片会在 rpmbuild/makepkg 的构建与清理阶段拦截批量删除并提示确认，导致 rpmbuild 中途失败。已内置修复：打包脚本用 `env -i`（纯净环境）启动 rpmbuild / makepkg，自动丢弃继承的 PATH 垫片、`$BASH_ENV` 与 `BASH_FUNC_rm*` 函数，无需手动干预。若仍失败，可手动验证：`command -v rm` 应为 `/usr/bin/rm`。
 - **启动报 `bad option: --no-sandbox`**：环境导出了 `ELECTRON_RUN_AS_NODE=1` → `env -u ELECTRON_RUN_AS_NODE ./qwenwork-app/start.sh`
+- **安装包/产物含 `:com.apple.provenance` 之类的侧车文件**：7z 解包 DMG 会把 macOS 的 APFS 扩展属性写成 `<名字>:com.apple.*` 的独立侧车文件（非法冒号文件名，Linux 无用，还会混进 RPM）。已在拷贝 `app.asar.unpacked` 与 Resources 载荷时统一排除（`tar --exclude='*:com.apple.*'`）。旧产物清理：隔离到 `~/.cache/qwenwork-linux/quarantine/` 后重新 `make package`。
 - **隔离目录**：被替换的 macOS 二进制与旧构建树移至 `~/.cache/qwenwork-linux/quarantine/`，不硬删，可随时清空。
 
 ## 目录结构与维护规范

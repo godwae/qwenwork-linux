@@ -18,6 +18,20 @@ require_cmd() {
     command -v "$1" >/dev/null 2>&1 || error "Missing required command: $1"
 }
 
+# A PATH with the standard system directories placed FIRST.
+#
+# Some dev environments inject shim directories ahead of /usr/bin — e.g. a
+# `rm` guard that requires interactive confirmation before bulk deletes, or
+# tool wrappers that print extra output. RPM's %install/%rmbuild stages shell
+# out to rm/chmod/strip and treat any non-zero exit as a build failure:
+#   [safe-delete][SAFE_DELETE_BULK_CONFIRM_REQUIRED] {"count":5494,...}
+#   error: Bad exit status from /var/tmp/rpm-tmp.* (rmbuild)
+# Prepending the standard directories makes those scripts resolve the real
+# binaries while leaving everything else on PATH available as a fallback.
+system_first_path() {
+    echo "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin${PATH:+:$PATH}"
+}
+
 # Quarantine helper (used instead of rm everywhere in this project).
 #
 # The port must strip dozens of foreign-platform binaries and stale build
