@@ -2,11 +2,20 @@
 
 # QwenWorkCN for Linux (Unofficial)
 
+> [!IMPORTANT]
+> ## 🛑 项目已终止 (Project Archived)
+>
+> **千问办公官方已发布 Linux 版本，本非官方移植项目即日起终止维护，仓库转为只读存档 (public archive)。**
+>
+> - 官方 Linux 安装包已可从千问办公官网获取，请直接使用官方渠道，体验更完整、更新更及时。
+> - 本仓库**不再接受** Issue 提交、Pull Request 或新功能请求。
+> - 现有构建脚本与文档仅作为历史参考保留，不保证在新版本上继续有效。
+
 </div>
 
 <div align="center">
 
-千问办公 (QwenWorkCN) 的非官方 Linux 自动化移植与安装构建脚本工具
+千问办公 (QwenWorkCN) 的非官方 Linux 自动化移植与安装构建脚本工具（**已归档，不再维护**）
 
 </div>
 
@@ -17,7 +26,7 @@
   <br>
   <img src="https://img.shields.io/badge/版本适配-1.0.1_(2026--08--26_正式版)-0052D9?style=flat&logo=probot&logoColor=white" alt="Supported Version">
   <img src="https://img.shields.io/badge/Electron-37.10.3-47307B?style=flat&logo=electron&logoColor=white" alt="Electron Version">
-  <img src="https://img.shields.io/badge/状态-Unofficial-d73a49?style=flat" alt="Status Unofficial">
+  <img src="https://img.shields.io/badge/状态-Archived-inactive?style=flat" alt="Status Archived">
   <img src="https://img.shields.io/badge/借鉴-workbuddy--linux-2EA44F?style=flat&logo=heart&logoColor=white" alt="Based on workbuddy-linux">
 </p>
 
@@ -25,6 +34,7 @@
 
 ## 目录
 
+- [项目状态](#项目状态)
 - [项目简介](#项目简介)
 - [特性亮点](#特性亮点)
 - [版本适配说明](#版本适配说明)
@@ -42,7 +52,22 @@
 
 ---
 
+## 项目状态
+
+> **🛑 已终止 / Archived（2026-09-18）**
+>
+> 千问办公官方已发布 Linux 版本，本非官方移植项目的使命已完成，仓库已转为 **public archive**：
+>
+> - ✅ 官方 Linux 安装包已上架，请直接从千问办公官网下载安装。
+> - ⛔ 本仓库**不再接受 Issue 与 Pull Request**，Issue 模板与讨论渠道均已关闭。
+> - 📦 现有构建脚本、补丁与文档仅作为历史参考保留，**不保证**在官方新版本上继续有效。
+> - 🔒 仓库处于只读状态，如需基于本工具二次开发，请自行 Fork。
+
+---
+
 ## 项目简介
+
+> **历史项目**：千问办公官方于 2026 年发布 Linux 版后，本工具已完成历史使命并归档，以下内容仅作参考。
 
 非官方社区工具，将你自行获取的官方**千问办公 (QwenWorkCN) macOS Intel/x64 DMG**转换为可在 Linux x64 运行的 Electron 应用。
 
@@ -60,11 +85,15 @@
 
 ## 版本适配说明
 
+> **归档提示**：以下为项目活跃期间的验证记录。官方已发布 Linux 版，请以官方版本为准。
+
 已基于官方 **1.0.0**（2026-08-24）与 **1.0.1**（build `26082607`，Electron `37.10.3`）验证通过，并在 `0.1.6` / `0.1.7` / `0.1.8` 上完成实测。补丁采用正则化锚点，上游发版重命名常量时自动适配，不会硬失败。
 
-遇到构建失败或运行异常，请附上 DMG 版本号提 Issue。
+> 项目已归档，不再接受构建失败的 Issue 提交。
 
 ## 快速安装
+
+> **归档提示**：官方已发布 Linux 安装包，建议直接使用官方渠道。以下步骤仅作为历史方法保留。
 
 1. 克隆本项目；
 2. 从官方渠道下载 **Intel/x64** 架构 DMG，放入 `downloads/`（仅放**唯一一份**）；
@@ -155,6 +184,8 @@ qwenwork-linux/
 
 本项目为**非官方社区开源工具**，与阿里巴巴/钉钉官方无任何关联。本工具不分发任何官方软件，仅自动化格式转换流程；使用产生的应用仍受官方协议约束。请自行确保 DMG 来源合法并遵守 EULA，工具按"现状"提供、无任何担保。
 
+**项目已归档**：千问办公官方已发布 Linux 版，本仓库仅保留历史代码与文档，不再维护，也不对任何使用后果负责。
+
 ## 开源许可证
 
 转换脚本采用 MIT 许可，详见 [LICENSE](LICENSE)。MIT 仅覆盖本仓库的转换工具，**不延伸到通过本工具安装的 QwenWorkCN 二进制文件**。
@@ -162,6 +193,8 @@ qwenwork-linux/
 ---
 
 ## English Summary
+
+> **⚠️ Archived** — QwenWorkCN has been officially released for Linux. This unofficial port is no longer maintained and the repository is read-only. Please use the official Linux package instead. Issues and pull requests are disabled.
 
 An unofficial community tool that converts your legally obtained official QwenWorkCN (千问办公) macOS Intel/x64 DMG into a locally-built Linux x64 Electron application. It never redistributes upstream software: place the DMG into `downloads/`, then run `make deps && make build-app && make package && make install`.
 
